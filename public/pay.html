@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Счет к оплате</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f7fafc 0%, #e2eafc 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    .card {
+      background: rgba(255,255,255,0.97);
+      border-radius: 22px;
+      box-shadow: 0 8px 32px rgba(60, 93, 134, 0.12);
+      padding: 36px 30px 28px 30px;
+      min-width: 320px;
+      max-width: 94vw;
+      width: 360px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .amount {
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: #21305b;
+      margin: 0 0 22px 0;
+    }
+    .pay-btn {
+      appearance: none;
+      border: none;
+      border-radius: 14px;
+      padding: 16px 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #34c759 85%, #5cf068 100%);
+      color: #fff;
+      width: 100%;
+      box-shadow: 0 2px 8px rgba(52, 199, 89, 0.07);
+      cursor: pointer;
+      transition: background 0.18s;
+      margin-bottom: 0.5rem;
+    }
+    .pay-btn:active {
+      background: #27a444;
+    }
+    .status {
+      margin-top: 1.5rem;
+      font-size: 1.12rem;
+      min-height: 32px;
+      color: #1a8d36;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .success-mark {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+    @media (max-width: 500px) {
+      .card {
+        min-width: 0;
+        width: 97vw;
+        padding: 22px 8vw 18px 8vw;
+      }
+      .amount {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="amount" id="amount"></div>
+    <button class="pay-btn" id="payBtn">Оплатить</button>
+    <div class="status" id="status"></div>
+  </div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const terminal = params.get('terminal');
+    const amount = params.get('amount');
+    document.getElementById('amount').textContent = `${amount} ₽`;
+
+    const statusEl = document.getElementById('status');
+    const payBtn = document.getElementById('payBtn');
+    let successShown = false;
+
+    payBtn.onclick = function() {
+      statusEl.textContent = "Ожидание подтверждения оплаты на терминале...";
+      payBtn.disabled = true;
+      payBtn.style.opacity = 0.7;
+    };
+
+    async function pollStatus() {
+      if (successShown) return;
+      const r = await fetch(`/api/pay/status?terminal=${terminal}&amount=${amount}`);
+      const { status } = await r.json();
+      if (status === 'confirmed') {
+        successShown = true;
+        payBtn.style.display = 'none';
+        statusEl.innerHTML = `
+          <span class='success-mark'>
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="24" cy="24" r="24" fill="#34c759"/>
+              <path d="M34 18L22 30L15 23" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <div>Оплата прошла успешно!</div>
+        `;
+      } else {
+        setTimeout(pollStatus, 2000);
+      }
+    }
+    pollStatus();
+  </script>
+</body>
+</html>
